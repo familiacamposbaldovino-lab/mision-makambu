@@ -53,6 +53,7 @@ let rewardRequests = [];
 let coinLedger = [];
 let playerSettings = [];
 let adjustmentCatalog = [];
+let notifications = [];
 let currentUserTab = 'inicio';
 let currentAdminTab = 'inicio';
 let autoRefreshInterval = null;
@@ -173,7 +174,7 @@ async function loadBaseData() {
   familyMembers = (members || []).map(m => ({ ...m, profile: m.profiles || null }));
   currentFamilyRole = familyMembers.find(m => m.user_id === currentUser.id)?.family_role || (currentProfile.global_role === 'platform_admin' ? 'guardian' : 'player');
 
-  await Promise.all([loadTasks(), loadRewards(), loadPlayerSettings(), loadTaskSubmissions(), loadRewardRequests(), loadCoinLedger(), loadAdjustmentCatalog()]);
+  await Promise.all([loadTasks(), loadRewards(), loadPlayerSettings(), loadTaskSubmissions(), loadRewardRequests(), loadCoinLedger(), loadAdjustmentCatalog(), loadNotifications()]);
 }
 async function loadTasks() {
   const { data, error } = await supabaseClient.from('tasks').select('*').eq('family_id', FAMILY_ID).eq('status', 'active').order('created_at');
@@ -203,8 +204,24 @@ async function loadAdjustmentCatalog() {
   const { data, error } = await supabaseClient.from('adjustment_catalog').select('*').eq('status','active').order('coins', { ascending: false });
   if (error) throw error; adjustmentCatalog = data || [];
 }
+async function loadNotifications() {
+  if (!currentUser?.id) { notifications = []; return; }
+  const { data, error } = await supabaseClient
+    .from('notifications')
+    .select('*')
+    .eq('family_id', FAMILY_ID)
+    .eq('recipient_id', currentUser.id)
+    .order('created_at', { ascending: false })
+    .limit(30);
+  if (error) {
+    console.warn('[notifications] No se pudieron cargar avisos:', error.message);
+    notifications = [];
+    return;
+  }
+  notifications = data || [];
+}
 async function refreshAll() {
-  await Promise.all([loadTasks(), loadRewards(), loadPlayerSettings(), loadTaskSubmissions(), loadRewardRequests(), loadCoinLedger(), loadAdjustmentCatalog()]);
+  await Promise.all([loadTasks(), loadRewards(), loadPlayerSettings(), loadTaskSubmissions(), loadRewardRequests(), loadCoinLedger(), loadAdjustmentCatalog(), loadNotifications()]);
   if (isGuardianOrPlatform()) renderAdminScreen(); else renderMainScreen();
   if (currentUserTab) showTab(currentUserTab);
   if (currentAdminTab) showAdminTab(currentAdminTab);
@@ -240,7 +257,8 @@ function showAdminTab(tab) {
   if (tab === 'misiones') renderAdminMissions();
   if (tab === 'tienda') renderAdminQuickHistory();
   if (tab === 'historial') renderAdminHistorialTab();
-  if (tab === 'gestion') { populateAdminSelects(); renderTaskListAdmin(); renderRewardListAdmin(); renderAdjustCatalogAdmin(); }
+  if (tab === 'gestion') { populateAdminSelects(); renderTaskListAdmin(); renderRewardListAdmin(); renderAdjustCatalogAdmin(); renderNotificationSettingsAdmin(); }
+  initAdminCollapsible();
 }
 
 // ================================================================
@@ -264,6 +282,17 @@ function approvedTodayCount(playerId = currentUser.id) {
   return taskSubmissions.filter(s => s.player_id === playerId && s.status === 'approved' && s.counts_for_daily_goal && dateBogotaISO(s.reviewed_at || s.submitted_at) === today).length;
 }
 function dailyGoal(playerId = currentUser.id) { return playerSettings.find(ps => ps.player_id === playerId)?.daily_goal || 5; }
+function shouldNotifyDailyGoal(playerId = currentUser.id) {
+  const settings = playerSettings.find(ps => ps.player_id === playerId);
+  return settings?.notify_daily_goal === true;
+}
+function guardianIdsForFamily() {
+  const ids = familyMembers
+    .filter(m => m.family_role === 'guardian')
+    .map(m => m.user_id)
+    .filter(Boolean);
+  return Array.from(new Set(ids));
+}
 function updateWeeklyProgress() {
   const done = approvedTodayCount();
   const goal = dailyGoal();
@@ -313,6 +342,10 @@ async function submitTask(taskId) {
 }
 async function undoTask(submissionId) {
   if (!submissionId) return;
+  const local = taskSubmissions.find(s => s.id === submissionId);
+  if (local && (local.player_id !== currentUser.id || local.status !== 'pending')) {
+    return showToast('⚠️ Solo puedes anular tus propias misiones pendientes');
+  }
 
   const { error } = await supabaseClient
     .from('task_submissions')
@@ -322,7 +355,6 @@ async function undoTask(submissionId) {
     .eq('status', 'pending');
 
   if (error) return fail(error, 'No se pudo cancelar la misión');
-
   playSound('error');
   showToast('↩ Misión cancelada');
   await refreshAll();
@@ -400,7 +432,7 @@ function renderAdminScreen() {
   renderAdminPanel();
 }
 function renderAdminPanel() {
-  renderPendingApprovals(); renderAdminRequestsPanel(); renderUserStats(); updateAdminBadge(); updateAdminRequestsBadge(); initAdminCollapsible();
+  renderPendingApprovals(); renderAdminRequestsPanel(); renderAdminNotifications(); renderUserStats(); updateAdminBadge(); updateAdminRequestsBadge(); initAdminCollapsible();
 }
 function renderPendingApprovals() {
   const el = $('pendingApprovals'); if (!el) return;
@@ -416,15 +448,43 @@ async function approveTask(submissionId) {
   const sameDay = dateBogotaISO(s.submitted_at) === todayBogotaISO();
   const status = sameDay ? 'approved' : 'late_approved';
   const coins = sameDay ? task.coins : 0;
+  const previousApprovedToday = approvedTodayCount(s.player_id);
   const { error: updErr } = await supabaseClient.from('task_submissions').update({ status, reviewed_at: new Date().toISOString(), reviewed_by: currentUser.id, coins_awarded: coins, counts_for_daily_goal: sameDay }).eq('id', submissionId);
   if (updErr) return fail(updErr, 'No se pudo aprobar');
   if (coins > 0) {
-    const { error: ledErr } = await supabaseClient.from('coin_ledger').insert({ family_id: FAMILY_ID, player_id: s.player_id, amount: coins, movement_type: 'task_reward', reason: `🌱 Creciste como el bambú +${coins}`, source_id: submissionId, created_by: currentUser.id });
+    const { error: ledErr } = await supabaseClient.from('coin_ledger').insert({ family_id: FAMILY_ID, player_id: s.player_id, amount: coins, movement_type: 'task_reward', reason: `🌱 Creciste como el bambú +${coins} — ${task.name}`, source_id: submissionId, created_by: currentUser.id });
     if (ledErr) return fail(ledErr, 'Aprobó, pero no registró coins');
+    await maybeCreateDailyGoalNotification(s.player_id, previousApprovedToday + 1);
     showToast(`✅ ${task.name} → +${coins} coins`); spawnParticles('🪙');
   } else showToast('✅ Aprobación tardía registrada sin coins');
   playSound('coin'); await refreshAll();
 }
+async function maybeCreateDailyGoalNotification(playerId, approvedCount) {
+  const goal = dailyGoal(playerId);
+  if (approvedCount < goal || !shouldNotifyDailyGoal(playerId)) return;
+
+  const today = todayBogotaISO();
+  const playerName = getProfileName(playerId);
+  const recipients = guardianIdsForFamily();
+  if (!recipients.length) return;
+
+  const rows = recipients.map(recipientId => ({
+    family_id: FAMILY_ID,
+    recipient_id: recipientId,
+    actor_id: playerId,
+    type: 'daily_goal_completed',
+    title: '🎋 Meta diaria completada',
+    message: `${playerName} completó ${approvedCount}/${goal} misiones hoy.`,
+    metadata: { player_id: playerId, date: today, approved_tasks: approvedCount, daily_goal: goal },
+    is_read: false
+  }));
+
+  const { error } = await supabaseClient.from('notifications').insert(rows);
+  if (error && error.code !== '23505') {
+    console.warn('[notifications] No se pudo crear aviso de meta diaria:', error.message);
+  }
+}
+
 async function rejectTask(submissionId) {
   const { error } = await supabaseClient.from('task_submissions').update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: currentUser.id }).eq('id', submissionId);
   if (error) return fail(error, 'No se pudo rechazar');
@@ -464,6 +524,64 @@ async function rejectRequest(requestId) {
   if (error) return fail(error, 'No se pudo rechazar');
   playSound('error'); showToast('❌ Solicitud rechazada'); await refreshAll();
 }
+function renderAdminNotifications() {
+  if (!isGuardianOrPlatform()) return;
+  let holder = $('adminNotificationsList');
+  if (!holder && $('admin-tab-inicio')) {
+    const sec = document.createElement('div');
+    sec.className = 'admin-section';
+    sec.innerHTML = `<div class="admin-sec-title"><span>🔔</span> Avisos de meta diaria<span class="sec-caret">▼</span></div><div class="admin-body"><div id="adminNotificationsList"></div></div>`;
+    const firstSection = $('admin-tab-inicio').querySelector('.admin-section');
+    if (firstSection?.nextSibling) $('admin-tab-inicio').insertBefore(sec, firstSection.nextSibling);
+    else $('admin-tab-inicio').appendChild(sec);
+    holder = $('adminNotificationsList');
+  }
+  if (!holder) return;
+  const list = notifications.filter(n => n.type === 'daily_goal_completed').slice(0, 10);
+  holder.innerHTML = list.length ? list.map(notificationHtml).join('') : empty('🔔','Sin avisos de meta diaria');
+}
+function notificationHtml(n) {
+  const unread = !n.is_read ? '<span class="hist-badge pending">Nuevo</span>' : '<span class="hist-badge approved">Leído</span>';
+  const action = !n.is_read ? `<button class="btn-give" onclick="markNotificationRead('${n.id}')">Marcar leído</button>` : '';
+  return `<div class="notif-item ${n.is_read ? '' : 'unread'}"><div class="hist-dot approved">🎋</div><div class="hist-info"><div class="hist-name">${escapeHtml(n.title || 'Aviso')}</div><div class="hist-sub">${escapeHtml(n.message || '')} · ${fmtDateTime(n.created_at)}</div></div>${unread}${action}</div>`;
+}
+async function markNotificationRead(notificationId) {
+  const { error } = await supabaseClient.from('notifications').update({ is_read: true }).eq('id', notificationId).eq('recipient_id', currentUser.id);
+  if (error) return fail(error, 'No se pudo marcar el aviso');
+  await loadNotifications();
+  renderAdminNotifications();
+}
+function renderNotificationSettingsAdmin() {
+  if (!isGuardianOrPlatform()) return;
+  let holder = $('dailyGoalNotifySettings');
+  if (!holder && $('admin-tab-gestion')) {
+    const sec = document.createElement('div');
+    sec.className = 'admin-section';
+    sec.innerHTML = `<div class="admin-sec-title"><span>🔔</span> Notificar meta diaria<span class="sec-caret">▼</span></div><div class="admin-body"><p class="notify-help">Activa un aviso interno para los acudientes cuando un jugador alcance su meta diaria. No envía avisos por cada tarea.</p><div id="dailyGoalNotifySettings"></div></div>`;
+    $('admin-tab-gestion').prepend(sec);
+    holder = $('dailyGoalNotifySettings');
+  }
+  if (!holder) return;
+  const playerIds = getPlayerIdsForAdmin();
+  holder.innerHTML = playerIds.map(id => {
+    const checked = shouldNotifyDailyGoal(id) ? 'checked' : '';
+    return `<div class="notify-row"><div><div class="notify-title">${escapeHtml(getProfileName(id))}</div><div class="notify-sub">Meta actual: ${dailyGoal(id)} misiones aprobadas</div></div><label class="switch"><input type="checkbox" ${checked} onchange="setDailyGoalNotification('${id}', this.checked)"><span class="slider"></span></label></div>`;
+  }).join('') || empty('🎮','No hay jugadores para configurar');
+}
+async function setDailyGoalNotification(playerId, enabled) {
+  const existing = playerSettings.find(ps => ps.player_id === playerId);
+  let error;
+  if (existing) {
+    ({ error } = await supabaseClient.from('player_settings').update({ notify_daily_goal: enabled }).eq('id', existing.id));
+  } else {
+    ({ error } = await supabaseClient.from('player_settings').insert({ family_id: FAMILY_ID, player_id: playerId, daily_goal: 5, notify_daily_goal: enabled, require_parent_approval: true }));
+  }
+  if (error) return fail(error, 'No se pudo guardar la opción');
+  showToast(enabled ? '🔔 Aviso de meta diaria activado' : '🔕 Aviso de meta diaria desactivado');
+  await loadPlayerSettings();
+  renderNotificationSettingsAdmin();
+}
+
 function renderUserStats() {
   const el = $('userStats'); if (!el) return;
   const ids = getPlayerIdsForAdmin();
@@ -530,7 +648,7 @@ async function addReward() {
   showToast('🏆 Recompensa agregada'); await refreshAll();
 }
 function resetDailyTasks() { showToast('ℹ️ El reset diario ahora se calcula por fecha Bogotá. No borra historial.'); }
-function exportData() { const blob = new Blob([JSON.stringify({ profiles: currentProfile, familyMembers, tasks, rewards, taskSubmissions, rewardRequests, coinLedger, playerSettings, adjustmentCatalog }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `makambu_export_${todayBogotaISO()}.json`; a.click(); }
+function exportData() { const blob = new Blob([JSON.stringify({ profiles: currentProfile, familyMembers, tasks, rewards, taskSubmissions, rewardRequests, coinLedger, playerSettings, adjustmentCatalog, notifications }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `makambu_export_${todayBogotaISO()}.json`; a.click(); }
 function openAdminWarpZone() { openWarpZone(); }
 function closeAdminWarpZone() { $('adminWarpZoneModal')?.classList.remove('open'); }
 function switchAdminTab(tab) { /* compatibilidad con HTML actual */ }
@@ -544,7 +662,16 @@ function undoAdultTask() {}
 // RENDER HELPERS
 // ================================================================
 function rewardRequestHtml(r) { const reward = rewards.find(x => x.id === r.reward_id) || {}; return `<div class="hist-item"><div class="hist-dot ${r.status}">${reward.icon || '🎁'}</div><div class="hist-info"><div class="hist-name">${escapeHtml(reward.name || 'Recompensa')}</div><div class="hist-sub">🪙${reward.cost || r.cost_charged || 0} · ${fmtDateTime(r.requested_at)}</div></div><span class="hist-badge ${r.status}">${statusLabel(r.status)}</span></div>`; }
-function ledgerHtml(c) { const cls = c.amount >= 0 ? 'approved' : 'rejected'; return `<div class="hist-item"><div class="hist-dot ${cls}">${c.amount >= 0 ? '🪙' : '⚠️'}</div><div class="hist-info"><div class="hist-name">${escapeHtml(c.reason || c.movement_type)}</div><div class="hist-sub">${fmtDateTime(c.created_at)}</div></div><span class="hist-badge ${cls}">${c.amount > 0 ? '+' : ''}${c.amount}</span></div>`; }
+function ledgerReason(c) {
+  const base = c.reason || c.movement_type;
+  if (c.movement_type === 'task_reward' && !String(base).includes('—')) {
+    const submission = taskSubmissions.find(s => s.id === c.source_id);
+    const task = tasks.find(t => t.id === submission?.task_id);
+    if (task?.name) return `${base} — ${task.name}`;
+  }
+  return base;
+}
+function ledgerHtml(c) { const cls = c.amount >= 0 ? 'approved' : 'rejected'; return `<div class="hist-item"><div class="hist-dot ${cls}">${c.amount >= 0 ? '🪙' : '⚠️'}</div><div class="hist-info"><div class="hist-name">${escapeHtml(ledgerReason(c))}</div><div class="hist-sub">${fmtDateTime(c.created_at)}</div></div><span class="hist-badge ${cls}">${c.amount > 0 ? '+' : ''}${c.amount}</span></div>`; }
 function statusLabel(status) { return ({ pending:'⏳ Pendiente', approved:'✅ Aprobado', delivered:'🎁 Entregado', rejected:'❌ Rechazado', late_approved:'🕒 Aprobado tarde' })[status] || status; }
 function empty(icon, msg) { return `<div class="empty-box"><span class="e-icon">${icon}</span><p>${msg}</p></div>`; }
 function escapeHtml(str = '') { return String(str).replace(/[&<>'"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c])); }
