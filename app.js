@@ -347,12 +347,9 @@ async function undoTask(submissionId) {
     return showToast('⚠️ Solo puedes anular tus propias misiones pendientes');
   }
 
-  const { error } = await supabaseClient
-    .from('task_submissions')
-    .delete()
-    .eq('id', submissionId)
-    .eq('player_id', currentUser.id)
-    .eq('status', 'pending');
+  const { error } = await supabaseClient.rpc('cancel_task_submission', {
+    target_submission_id: submissionId
+  });
 
   if (error) return fail(error, 'No se pudo cancelar la misión');
   playSound('error');
