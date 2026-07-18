@@ -166,6 +166,10 @@ function syncHashForRole(tab) {
   }
 }
 
+function goToHomeRoute() {
+  syncHashForRole('hoy');
+}
+
 function applyRouteForCurrentRole() {
   if (!session?.user) return;
   const route = normalizeRoute();
@@ -425,6 +429,7 @@ async function handleSupabaseLogin(event) {
   }
 
   session = data.session;
+  goToHomeRoute();
   await bootstrapApp();
 }
 
@@ -435,6 +440,7 @@ async function doLogout() {
   currentUser = null;
   currentProfile = null;
   currentFamilyRole = null;
+  goToHomeRoute();
   showScreen('loginScreen');
 }
 
