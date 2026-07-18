@@ -266,8 +266,8 @@ input, select, textarea { font-family: var(--font); outline: none; border: none;
 .btn-bell { position: relative; }
 .btn-icon-glyph { line-height: 1; }
 .notification-badge {
-  top: -4px !important;
-  right: -4px !important;
+  top: 0 !important;
+  right: 0 !important;
   left: auto !important;
   transform: none !important;
   min-width: 18px;

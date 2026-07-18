@@ -703,12 +703,9 @@ async function loadNotifications() {
   notificationsError = '';
   renderNotificationsPanel();
 
-  const { data, error } = await supabaseClient
-    .from('notifications')
-    .select('*')
-    .eq('recipient_id', currentUser.id)
-    .order('created_at', { ascending: false })
-    .limit(NOTIFICATION_HISTORY_LIMIT);
+  const { data, error } = await supabaseClient.rpc('get_my_notifications', {
+    target_limit: NOTIFICATION_HISTORY_LIMIT
+  });
 
   if (error) {
     console.warn('[notifications] No se pudieron cargar avisos:', error.message);
