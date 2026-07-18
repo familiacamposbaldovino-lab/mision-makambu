@@ -265,9 +265,16 @@ input, select, textarea { font-family: var(--font); outline: none; border: none;
 .btn-icon:hover { background: var(--accent-soft); }
 .btn-bell { position: relative; }
 .btn-icon-glyph { line-height: 1; }
-.btn-bell .nav-badge {
-  top: -2px;
-  right: -2px;
+.notification-badge {
+  top: -4px !important;
+  right: -4px !important;
+  left: auto !important;
+  transform: none !important;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  padding: 0 5px;
+  box-shadow: 0 2px 8px rgba(242, 92, 92, 0.28);
 }
 
 /* ================================================================
