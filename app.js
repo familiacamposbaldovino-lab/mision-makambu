@@ -1195,9 +1195,12 @@ function notificationCardHtml(notification) {
   </div>`;
 }
 
-function openNotificationsPanel() {
-  renderNotificationsPanel();
+async function openNotificationsPanel() {
   $('notificationsModal')?.classList.add('open');
+  renderNotificationsPanel();
+  if (isOnline() && isBackendReady() && currentUser?.id) {
+    await refreshNotificationsFromPanel();
+  }
 }
 
 function closeNotificationsPanel() {

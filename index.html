@@ -96,7 +96,7 @@
           <span class="c-icon">🪙</span>
           <span class="c-val" id="coinDisplay">0</span>
         </div>
-        <button class="btn-icon btn-bell" onclick="openNotificationsPanel()" title="Notificaciones" aria-label="Notificaciones">
+        <button class="btn-icon btn-bell" type="button" onclick="openNotificationsPanel(); return false;" title="Notificaciones" aria-label="Notificaciones">
           <span class="btn-icon-glyph">🔔</span>
           <span id="notificationBadgeMain" class="nav-badge" hidden>0</span>
         </button>
@@ -196,7 +196,7 @@
           <span class="c-icon">🪙</span>
           <span class="c-val" id="adminCoinDisplay">0</span>
         </div>
-        <button class="btn-icon btn-bell" onclick="openNotificationsPanel()" title="Notificaciones" aria-label="Notificaciones">
+        <button class="btn-icon btn-bell" type="button" onclick="openNotificationsPanel(); return false;" title="Notificaciones" aria-label="Notificaciones">
           <span class="btn-icon-glyph">🔔</span>
           <span id="notificationBadgeAdmin" class="nav-badge" hidden>0</span>
         </button>
