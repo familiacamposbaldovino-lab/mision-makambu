@@ -7,28 +7,28 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#5C6EF8">
-  <title>🎋 Misión Makambú</title>
+  <meta name="apple-mobile-web-app-title" content="Makambu">
+  <title>Mision Makambu</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
 
-  <!-- ═══════════════════════════════════════════
-       LOGIN SUPABASE — MISIÓN MAKAMBÚ
-  ═══════════════════════════════════════════ -->
   <div id="loginScreen" class="screen active">
     <div class="login-card">
       <div class="login-header">
         <span class="login-logo-emoji">🎋</span>
-        <div class="login-title">MISIÓN<br>MAKAMBÚ</div>
-        <div class="login-sub">Hábitos para familias modernas</div>
+        <div class="login-title">MISION<br>MAKAMBU</div>
+        <div class="login-sub">Habitos para familias modernas</div>
       </div>
 
       <form id="loginForm" class="login-form" onsubmit="handleSupabaseLogin(event)">
         <label class="login-label" for="emailInput">Correo</label>
         <input id="emailInput" class="login-input" type="email" autocomplete="email" placeholder="correo@ejemplo.com" required>
 
-        <label class="login-label" for="passwordInput">Contraseña</label>
+        <label class="login-label" for="passwordInput">Contrasena</label>
         <input id="passwordInput" class="login-input" type="password" autocomplete="current-password" placeholder="••••••••" required>
 
         <div id="loginError" class="login-error"></div>
@@ -41,19 +41,12 @@
     </div>
   </div>
 
-
-
-  <!-- ═══════════════════════════════════════════
-       PANTALLA USUARIO (Mateo / adultos con rol user)
-  ═══════════════════════════════════════════ -->
   <div id="mainScreen" class="screen">
-
-    <!-- Top bar -->
     <div class="topbar">
       <div class="topbar-left">
         <div class="topbar-avatar" id="mainAvatar">👦</div>
         <div>
-          <div class="topbar-name" id="mainName">Mateo</div>
+          <div class="topbar-name" id="mainName">Usuario</div>
           <div class="topbar-role" id="mainRole">Jugador</div>
         </div>
       </div>
@@ -62,77 +55,49 @@
           <span class="c-icon">🪙</span>
           <span class="c-val" id="coinDisplay">0</span>
         </div>
-        <button class="btn-icon" onclick="manualUserRefresh()" title="Actualizar">🔄</button>
-        <button class="btn-icon" onclick="doLogout()" title="Salir">🚪</button>
+        <button class="btn-icon" onclick="manualUserRefresh()" title="Actualizar">↻</button>
       </div>
     </div>
 
-    <!-- Tab: Inicio -->
-    <div class="screen-body" id="tab-inicio" style="display:block;">
-      <!-- Hero -->
-      <div class="hero-card">
-        <div class="hero-greeting" id="heroGreeting">¡Buenos días!</div>
-        <div class="hero-name" id="heroName">Mateo</div>
-        <div class="hero-coins">
-          <span class="hero-coins-num" id="heroCoins">0</span>
-          <span class="hero-coins-label">monedas 🪙</span>
-        </div>
-        <div class="weekly-progress">
-          <div class="weekly-row">
-            <span>Progreso semanal</span>
-            <span id="weeklyPct">0%</span>
-          </div>
-          <div class="weekly-track">
-            <div class="weekly-fill" id="weeklyFill" style="width:0%"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Misiones del día (resumen) -->
-      <div class="section-row">
-        <span class="section-title">Misiones del día</span>
-        <button class="section-link" onclick="showTab('misiones')">Ver todas →</button>
-      </div>
-      <div id="missionsPreview"></div>
+    <div class="screen-body" id="tab-hoy" style="display:block;">
+      <div id="todayPlayerView"></div>
     </div>
 
-    <!-- Tab: Misiones -->
     <div class="screen-body" id="tab-misiones" style="display:none;">
-      <div class="section-row" style="margin-bottom:14px;">
-        <span class="section-title">⭐ Misiones</span>
+      <div class="section-row section-row-tight">
+        <span class="section-title">Misiones</span>
         <span class="pixel-label">HOY</span>
       </div>
       <div id="missionsList"></div>
     </div>
 
-    <!-- Tab: Tienda -->
     <div class="screen-body" id="tab-tienda" style="display:none;">
-      <!-- Sheet trigger -->
-      <div class="hero-card" style="background:linear-gradient(135deg,#F5A623,#FB923C);" onclick="openWarpZone()">
+      <div class="hero-card hero-card-store" onclick="openWarpZone()">
         <div class="hero-greeting">Tienda de recompensas</div>
-        <div class="hero-name">Warp Zone 🌟</div>
-        <div style="font-size:13px;opacity:0.85;font-weight:700;">Toca para ver tus premios →</div>
+        <div class="hero-name">Warp Zone</div>
+        <div class="hero-helper">Toca para revisar tus premios y pedidos.</div>
       </div>
-      <!-- Historial rápido -->
       <div class="section-row">
         <span class="section-title">Mis solicitudes</span>
       </div>
       <div id="quickHistory"></div>
     </div>
 
-    <!-- Tab: Historial -->
     <div class="screen-body" id="tab-historial" style="display:none;">
-      <div class="section-row" style="margin-bottom:14px;">
-        <span class="section-title">📜 Historial</span>
+      <div class="section-row section-row-tight">
+        <span class="section-title">Historial</span>
       </div>
       <div id="historialList"></div>
     </div>
 
-    <!-- Bottom nav -->
+    <div class="screen-body" id="tab-perfil" style="display:none;">
+      <div id="playerProfileView"></div>
+    </div>
+
     <nav class="bottom-nav" id="mainNav">
-      <button class="nav-item active" onclick="showTab('inicio')">
+      <button class="nav-item active" onclick="showTab('hoy')">
         <span class="nav-icon">🏠</span>
-        <span>Inicio</span>
+        <span>Hoy</span>
       </button>
       <button class="nav-item" onclick="showTab('misiones')">
         <span class="nav-icon">⭐</span>
@@ -147,132 +112,91 @@
         <span class="nav-icon">📜</span>
         <span>Historial</span>
       </button>
+      <button class="nav-item" onclick="showTab('perfil')">
+        <span class="nav-icon">👤</span>
+        <span>Perfil</span>
+      </button>
     </nav>
   </div>
 
-
-  <!-- ═══════════════════════════════════════════
-       WARP ZONE MODAL (tienda)
-  ═══════════════════════════════════════════ -->
   <div id="warpZoneModal" class="modal-overlay" onclick="if(event.target===this)closeWarpZone()">
     <div class="modal-sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
         <div>
-          <div class="sheet-title">🌟 Warp Zone</div>
+          <div class="sheet-title">Warp Zone</div>
         </div>
         <div class="sheet-coins">🪙 <span id="modalCoinDisplay">0</span></div>
         <button class="btn-close" onclick="closeWarpZone()">✕</button>
       </div>
       <div class="sheet-tabs">
-        <button class="tab-pill active" onclick="switchTab('tiempo')">⏱ Tiempo</button>
-        <button class="tab-pill" onclick="switchTab('premios')">🎁 Premios</button>
-        <button class="tab-pill" onclick="switchTab('store-hist')">📋 Mis pedidos</button>
+        <button class="tab-pill active" onclick="switchStoreTab('tiempo')">Tiempo</button>
+        <button class="tab-pill" onclick="switchStoreTab('premios')">Premios</button>
+        <button class="tab-pill" onclick="switchStoreTab('store-hist')">Mis pedidos</button>
       </div>
-      <div id="tab-tiempo"     class="tab-pane active"></div>
-      <div id="tab-premios"    class="tab-pane"></div>
+      <div id="tab-tiempo" class="tab-pane active"></div>
+      <div id="tab-premios" class="tab-pane"></div>
       <div id="tab-store-hist" class="tab-pane"></div>
     </div>
   </div>
 
-
-  <!-- ═══════════════════════════════════════════
-       PANTALLA ADMIN
-  ═══════════════════════════════════════════ -->
   <div id="adminScreen" class="screen">
-
-    <!-- Top bar admin -->
     <div class="admin-topbar">
       <div>
-        <div class="admin-greet">Panel Admin</div>
-        <div class="admin-uname" id="adminName">Cristian</div>
+        <div class="admin-greet">Panel familiar</div>
+        <div class="admin-uname" id="adminName">Acudiente</div>
       </div>
       <div class="admin-topbar-right">
-        <div class="topbar-coins" style="font-size:13px;">
+        <div class="topbar-coins">
           <span class="c-icon">🪙</span>
           <span class="c-val" id="adminCoinDisplay">0</span>
         </div>
-        <span id="cloudStatus">☁️ OK</span>
-        <button class="btn-icon" onclick="doLogout()">🚪</button>
+        <span id="cloudStatus">Nube OK</span>
       </div>
     </div>
 
-    <!-- Admin tab body -->
     <div id="adminTabBody" class="screen-body">
-
-      <!-- Tab: Home admin -->
-      <div id="admin-tab-inicio" style="display:block;">
-
-        <!-- Stats usuarios -->
-        <div class="admin-section">
-          <div class="admin-sec-title">
-            <span>👥</span> Monedas del equipo
-            <span class="sec-caret">▼</span>
-          </div>
-          <div class="admin-body">
-            <div id="userStats"></div>
-          </div>
-        </div>
-
-        <!-- Aprobaciones de tareas -->
-        <div class="admin-section">
-          <div class="admin-sec-title">
-            <span>✅</span> Tareas pendientes
-            <span class="sec-caret">▼</span>
-          </div>
-          <div class="admin-body">
-            <div id="pendingApprovals"></div>
-          </div>
-        </div>
-
-        <!-- Solicitudes de tienda -->
-        <div class="admin-section">
-          <div class="admin-sec-title">
-            <span>🛒</span> Solicitudes de tienda
-            <button class="btn-sync" onclick="syncRequestsNow()" style="margin-left:auto;margin-right:8px;">🔄 Sync</button>
-            <span class="sec-caret">▼</span>
-          </div>
-          <div class="admin-body">
-            <div id="adminRequestsList"></div>
-          </div>
-        </div>
-
-      </div><!-- /admin-tab-inicio -->
-
-      <!-- Tab: Misiones (pool adultos) -->
-      <div id="admin-tab-misiones" style="display:none;">
-        <div class="section-row" style="margin-bottom:14px;">
-          <span class="section-title">⭐ Mis Misiones</span>
-          <span class="pixel-label">HOY</span>
-        </div>
-        <div id="adminMissionsList"></div>
+      <div id="admin-tab-hoy" style="display:block;">
+        <div id="adminTodayView"></div>
       </div>
 
-      <!-- Tab: Tienda (admin) -->
-      <div id="admin-tab-tienda" style="display:none;">
-        <div class="hero-card" style="background:linear-gradient(135deg,#F5A623,#FB923C);" onclick="openAdminWarpZone()">
-          <div class="hero-greeting">Tienda de recompensas</div>
-          <div class="hero-name">Mis Premios 🌟</div>
-          <div style="font-size:13px;opacity:0.85;font-weight:700;">Toca para ver tus premios →</div>
+      <div id="admin-tab-familia" style="display:none;">
+        <div class="section-row section-row-tight">
+          <span class="section-title">Familia</span>
         </div>
-        <div class="section-row">
-          <span class="section-title">Mis solicitudes</span>
-        </div>
-        <div id="adminQuickHistory"></div>
+        <div id="adminFamilyView"></div>
       </div>
 
-      <!-- Tab: Historial (admin) -->
-      <div id="admin-tab-historial" style="display:none;">
-        <div class="section-row" style="margin-bottom:14px;">
-          <span class="section-title">📜 Mi Historial</span>
+      <div id="admin-tab-tareas" style="display:none;">
+        <div class="section-row section-row-tight">
+          <span class="section-title">Tareas y revisiones</span>
         </div>
-        <div id="adminHistorialList"></div>
+        <div class="card">
+          <div class="card-title">Solicitudes pendientes</div>
+          <div id="pendingApprovals"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Misiones activas</div>
+          <div id="adminMissionsList"></div>
+        </div>
       </div>
 
-      <!-- Tab: Gestión -->
-      <div id="admin-tab-gestion" style="display:none;">
+      <div id="admin-tab-solicitudes" style="display:none;">
+        <div class="section-row section-row-tight">
+          <span class="section-title">Solicitudes de tienda</span>
+          <button class="btn-sync" onclick="syncRequestsNow()">Sync</button>
+        </div>
+        <div id="adminRequestsList"></div>
+      </div>
 
-        <!-- Ajustar coins -->
+      <div id="admin-tab-perfil" style="display:none;">
+        <div id="adminProfileView"></div>
+
+        <div class="card">
+          <div class="card-title">Mi historial</div>
+          <div id="adminHistorialList"></div>
+        </div>
+
         <div class="admin-section">
           <div class="admin-sec-title"><span>🪙</span> Ajustar monedas<span class="sec-caret">▼</span></div>
           <div class="admin-body">
@@ -285,15 +209,14 @@
               <input id="adjAmount" class="adm-input" type="number" min="1" placeholder="Ej: 10" style="flex:1;">
             </div>
             <div class="adm-row" style="gap:8px;margin-top:4px;">
-              <button class="btn-adm" style="flex:1;" onclick="adjustCoins(1)">➕ Dar</button>
-              <button class="btn-adm danger" style="flex:1;" onclick="adjustCoins(-1)">➖ Quitar</button>
+              <button class="btn-adm" style="flex:1;" onclick="adjustCoins(1)">Dar</button>
+              <button class="btn-adm danger" style="flex:1;" onclick="adjustCoins(-1)">Quitar</button>
             </div>
           </div>
         </div>
 
-        <!-- Agregar tarea -->
         <div class="admin-section">
-          <div class="admin-sec-title"><span>➕</span> Nueva misión<span class="sec-caret">▼</span></div>
+          <div class="admin-sec-title"><span>➕</span> Nueva mision<span class="sec-caret">▼</span></div>
           <div class="admin-body">
             <div class="adm-form">
               <div class="adm-row">
@@ -301,7 +224,7 @@
                 <input id="newTaskName" class="adm-input" type="text" placeholder="Ej: Tender la cama" style="flex:1;">
               </div>
               <div class="adm-row">
-                <label>Ícono</label>
+                <label>Icono</label>
                 <input id="newTaskIcon" class="adm-input" type="text" placeholder="🛏️" maxlength="4" style="width:70px;">
                 <label style="min-width:40px;">Coins</label>
                 <input id="newTaskCoins" class="adm-input" type="number" min="1" placeholder="5" style="width:65px;">
@@ -309,18 +232,17 @@
               <div class="adm-row">
                 <label>Asignar</label>
                 <select id="newTaskUser" class="adm-select" style="flex:1;"></select>
-                <select id="newTaskFreq" class="adm-select" style="width:100px;">
+                <select id="newTaskFreq" class="adm-select" style="width:110px;">
                   <option>Diaria</option>
                   <option>Semanal</option>
                 </select>
               </div>
-              <button class="btn-adm" onclick="addTask()">✅ Agregar misión</button>
+              <button class="btn-adm" onclick="addTask()">Agregar mision</button>
             </div>
             <div style="margin-top:12px;" id="taskListAdmin"></div>
           </div>
         </div>
 
-        <!-- Agregar recompensa -->
         <div class="admin-section">
           <div class="admin-sec-title"><span>🏆</span> Nueva recompensa<span class="sec-caret">▼</span></div>
           <div class="admin-body">
@@ -330,7 +252,7 @@
                 <input id="newRewardName" class="adm-input" type="text" placeholder="Ej: 30 min TV" style="flex:1;">
               </div>
               <div class="adm-row">
-                <label>Ícono</label>
+                <label>Icono</label>
                 <input id="newRewardIcon" class="adm-input" type="text" placeholder="📺" maxlength="4" style="width:70px;">
                 <label style="min-width:40px;">Coins</label>
                 <input id="newRewardCost" class="adm-input" type="number" min="1" placeholder="30" style="width:65px;">
@@ -342,65 +264,52 @@
                   <option>Premio</option>
                 </select>
               </div>
-              <div class="adm-row">
-                <label>Para</label>
-                <select id="newRewardAudience" class="adm-select" style="flex:1;">
-                  <option value="mateo">👦 Mateo</option>
-                  <option value="adultos">👨‍👩 Adultos</option>
-                </select>
-              </div>
-              <button class="btn-adm" onclick="addReward()">🏆 Agregar recompensa</button>
+              <button class="btn-adm" onclick="addReward()">Agregar recompensa</button>
             </div>
             <div style="margin-top:12px;" id="rewardListAdmin"></div>
           </div>
         </div>
 
-        <!-- Acciones peligrosas -->
         <div class="admin-section">
-          <div class="admin-sec-title"><span>⚙️</span> Configuración<span class="sec-caret">▼</span></div>
+          <div class="admin-sec-title"><span>⚙️</span> Configuracion<span class="sec-caret">▼</span></div>
           <div class="admin-body">
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn-adm danger" onclick="resetDailyTasks()">🔄 Reiniciar día</button>
-              <button class="btn-adm secondary" onclick="exportData()">💾 Exportar</button>
+              <button class="btn-adm danger" onclick="resetDailyTasks()">Reset diario</button>
+              <button class="btn-adm secondary" onclick="exportData()">Exportar JSON</button>
+              <button class="btn-adm secondary" onclick="manualUserRefresh()">Actualizar</button>
+              <button class="btn-adm secondary" onclick="doLogout()">Cerrar sesion</button>
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
-      </div><!-- /admin-tab-gestion -->
-
-    </div><!-- /adminTabBody -->
-
-    <!-- Bottom nav admin -->
     <nav class="bottom-nav" id="adminNav">
-      <button class="nav-item active" onclick="showAdminTab('inicio')">
+      <button class="nav-item active" onclick="showAdminTab('hoy')">
         <span class="nav-icon">🏠</span>
-        <span>Inicio</span>
+        <span>Hoy</span>
+      </button>
+      <button class="nav-item" onclick="showAdminTab('familia')">
+        <span class="nav-icon">👨‍👩‍👧‍👦</span>
+        <span>Familia</span>
+      </button>
+      <button class="nav-item" onclick="showAdminTab('tareas')">
+        <span class="nav-icon">✅</span>
+        <span>Tareas</span>
         <span id="pendingBadgeAdmin"></span>
+      </button>
+      <button class="nav-item" onclick="showAdminTab('solicitudes')">
+        <span class="nav-icon">🛒</span>
+        <span>Solicitudes</span>
         <span id="requestsBadgeAdmin"></span>
       </button>
-      <button class="nav-item" onclick="showAdminTab('misiones')">
-        <span class="nav-icon">⭐</span>
-        <span>Misiones</span>
-      </button>
-      <button class="nav-item" onclick="showAdminTab('tienda')">
-        <span class="nav-icon">🛒</span>
-        <span>Tienda</span>
-      </button>
-      <button class="nav-item" onclick="showAdminTab('historial')">
-        <span class="nav-icon">📜</span>
-        <span>Historial</span>
-      </button>
-      <button class="nav-item" onclick="showAdminTab('gestion')">
-        <span class="nav-icon">⚙️</span>
-        <span>Gestión</span>
+      <button class="nav-item" onclick="showAdminTab('perfil')">
+        <span class="nav-icon">👤</span>
+        <span>Perfil</span>
       </button>
     </nav>
   </div>
 
-
-  <!-- ═══════════════════════════════════════════
-       LOADING OVERLAY
-  ═══════════════════════════════════════════ -->
   <div id="loadingOverlay" class="loading-overlay">
     <div class="loading-card">
       <div class="spinner"></div>
@@ -408,32 +317,9 @@
     </div>
   </div>
 
-  <!-- TOAST -->
   <div id="toast"></div>
 
-  <!-- ═══════════════════════════════════════════
-       ADMIN WARP ZONE MODAL
-  ═══════════════════════════════════════════ -->
-  <div id="adminWarpZoneModal" class="modal-overlay" onclick="if(event.target===this)closeAdminWarpZone()">
-    <div class="modal-sheet">
-      <div class="sheet-handle"></div>
-      <div class="sheet-header">
-        <div>
-          <div class="sheet-title">🌟 Mis Premios</div>
-        </div>
-        <div class="sheet-coins">🪙 <span id="adminModalCoinDisplay">0</span></div>
-        <button class="btn-close" onclick="closeAdminWarpZone()">✕</button>
-      </div>
-      <div class="sheet-tabs">
-        <button class="tab-pill active admin-tab-pill" data-tab="premios" onclick="switchAdminTab('premios')">🎁 Premios</button>
-        <button class="tab-pill admin-tab-pill" data-tab="store-hist" onclick="switchAdminTab('store-hist')">📋 Mis pedidos</button>
-      </div>
-      <div id="atab-premios"    class="tab-pane active admin-tab-pane"></div>
-      <div id="atab-store-hist" class="tab-pane admin-tab-pane"></div>
-    </div>
-  </div>
-
-</div><!-- /app -->
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 </body>

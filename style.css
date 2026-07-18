@@ -843,3 +843,336 @@ input, select, textarea { font-family: var(--font); outline: none; border: none;
 .switch input:checked + .slider:before {
   transform: translateX(20px);
 }
+
+/* ================================================================
+   FASE 1 MOVIL - HOY
+================================================================ */
+.section-row-tight {
+  margin-bottom: 14px;
+}
+
+.hero-card-today,
+.hero-card-admin {
+  margin-bottom: 16px;
+}
+
+.hero-card-store {
+  cursor: pointer;
+}
+
+.hero-helper,
+.today-date,
+.inline-note {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.today-date {
+  opacity: 0.88;
+  text-transform: capitalize;
+  margin-bottom: 8px;
+}
+
+.hero-helper {
+  opacity: 0.84;
+}
+
+.progress-card {
+  overflow: hidden;
+}
+
+.progress-bar-shell {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  overflow: hidden;
+  margin: 10px 0 14px;
+}
+
+.progress-bar-shell.compact {
+  height: 8px;
+  margin: 10px 0 0;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green) 0%, var(--accent) 100%);
+  min-width: 4px;
+  transition: width 0.35s ease;
+}
+
+.progress-stats-grid,
+.summary-grid,
+.quick-actions-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.progress-stats-grid,
+.summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mini-stat,
+.summary-card {
+  background: var(--bg);
+  border: 1px solid var(--bg-subtle);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.mini-stat strong,
+.summary-card strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.mini-stat-label,
+.summary-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 800;
+}
+
+.store-status-copy {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.store-ready-card {
+  border: 1px solid rgba(34, 201, 122, 0.22);
+  background: linear-gradient(180deg, #ffffff 0%, #f4fff9 100%);
+}
+
+.store-locked-card {
+  border: 1px solid rgba(245, 166, 35, 0.22);
+  background: linear-gradient(180deg, #ffffff 0%, #fff9ef 100%);
+}
+
+.quick-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.quick-action-btn {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(92, 110, 248, 0.22);
+}
+
+.quick-action-btn.secondary {
+  background: var(--bg-subtle);
+  color: var(--text-2);
+  box-shadow: none;
+}
+
+.quick-actions-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.quick-action-tile {
+  min-height: 78px;
+  border-radius: 16px;
+  border: 1px solid var(--bg-subtle);
+  background: linear-gradient(180deg, #ffffff 0%, #f7f8fc 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  color: var(--text);
+  text-align: left;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: var(--shadow);
+}
+
+.quick-action-tile span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.status-chip.neutral {
+  background: var(--bg-subtle);
+  color: var(--text-2);
+}
+
+.status-chip.success {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.status-chip.warn {
+  background: var(--gold-soft);
+  color: var(--gold-dark);
+}
+
+.mission-card.rejected-state {
+  background: var(--red-soft);
+  border-color: var(--red);
+}
+
+.mission-card.cancelled-state {
+  background: var(--bg-subtle);
+  border-color: #d5d9eb;
+}
+
+.mission-tag.rejected {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.mission-tag.cancelled {
+  background: var(--bg-subtle);
+  color: var(--text-2);
+}
+
+.btn-mission-action.retry {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.profile-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 22px 18px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.profile-avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 32px;
+}
+
+.profile-name {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.profile-role {
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 800;
+  margin: 4px 0 16px;
+}
+
+.family-progress-card {
+  background: var(--bg);
+  border: 1px solid var(--bg-subtle);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.family-progress-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.family-progress-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.family-progress-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.family-progress-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.family-progress-head .status-chip {
+  margin-left: auto;
+}
+
+.alert-row {
+  background: var(--bg);
+  border-left: 4px solid var(--gold);
+  border-radius: 12px;
+  padding: 12px 12px 12px 14px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.inline-note {
+  color: var(--text-2);
+  margin-top: 12px;
+}
+
+.inline-note-spaced {
+  margin: 10px 0 8px;
+}
+
+@media (max-width: 380px) {
+  .progress-stats-grid,
+  .summary-grid,
+  .quick-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-actions-row {
+    flex-direction: column;
+  }
+
+  .quick-action-btn {
+    width: 100%;
+  }
+}
