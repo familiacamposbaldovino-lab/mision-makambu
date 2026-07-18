@@ -703,7 +703,7 @@ async function loadNotifications() {
   notificationsError = '';
   renderNotificationsPanel();
 
-  const { data, error } = await supabaseClient.rpc('get_my_notifications', {
+  const { data, error } = await supabaseClient.rpc('get_my_notifications_json', {
     target_limit: NOTIFICATION_HISTORY_LIMIT
   });
 
@@ -717,7 +717,7 @@ async function loadNotifications() {
     return;
   }
 
-  notifications = data || [];
+  notifications = Array.isArray(data) ? data : [];
   notificationsLoading = false;
   notificationsError = '';
   renderNotificationsPanel();
