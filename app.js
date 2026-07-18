@@ -9,6 +9,8 @@ const FAMILY_ID = '11111111-1111-1111-1111-111111111111';
 const APP_VERSION = '2026.07.18-pwa.1';
 const INSTALL_DISMISSED_KEY = 'makambu_install_dismissed_v1';
 const INSTALL_GUIDE_DISMISSED_KEY = 'makambu_install_guide_dismissed_v1';
+const NOTIFICATION_HISTORY_LIMIT = 50;
+const PENDING_NOTIFICATION_MINUTES = 120;
 
 const PLAYER_TABS = ['hoy', 'misiones', 'tienda', 'historial', 'perfil'];
 const ADMIN_TABS = ['hoy', 'familia', 'tareas', 'solicitudes', 'perfil'];
@@ -87,6 +89,8 @@ let coinLedger = [];
 let playerSettings = [];
 let adjustmentCatalog = [];
 let notifications = [];
+let notificationsLoading = false;
+let notificationsError = '';
 let currentUserTab = 'hoy';
 let currentAdminTab = 'hoy';
 let currentStoreTab = 'tiempo';
@@ -607,9 +611,11 @@ async function loadBaseData() {
     loadTaskSubmissions(),
     loadRewardRequests(),
     loadCoinLedger(),
-    loadAdjustmentCatalog(),
-    loadNotifications()
+    loadAdjustmentCatalog()
   ]);
+
+  await syncPendingNotificationReminders();
+  await loadNotifications();
 }
 
 async function loadTasks() {
@@ -686,8 +692,16 @@ async function loadAdjustmentCatalog() {
 async function loadNotifications() {
   if (!currentUser?.id) {
     notifications = [];
+    notificationsLoading = false;
+    notificationsError = '';
+    renderNotificationsPanel();
+    updateNotificationBadges();
     return;
   }
+
+  notificationsLoading = true;
+  notificationsError = '';
+  renderNotificationsPanel();
 
   const { data, error } = await supabaseClient
     .from('notifications')
@@ -695,15 +709,34 @@ async function loadNotifications() {
     .eq('family_id', FAMILY_ID)
     .eq('recipient_id', currentUser.id)
     .order('created_at', { ascending: false })
-    .limit(30);
+    .limit(NOTIFICATION_HISTORY_LIMIT);
 
   if (error) {
     console.warn('[notifications] No se pudieron cargar avisos:', error.message);
     notifications = [];
+    notificationsError = 'No se pudieron cargar tus notificaciones.';
+    notificationsLoading = false;
+    renderNotificationsPanel();
+    updateNotificationBadges();
     return;
   }
 
   notifications = data || [];
+  notificationsLoading = false;
+  notificationsError = '';
+  renderNotificationsPanel();
+  updateNotificationBadges();
+}
+
+async function syncPendingNotificationReminders() {
+  if (!currentUser?.id || !isGuardianOrPlatform() || !isOnline() || !isBackendReady()) return;
+  const { error } = await supabaseClient.rpc('sync_pending_notification_reminders', {
+    target_family_id: FAMILY_ID,
+    pending_minutes: PENDING_NOTIFICATION_MINUTES
+  });
+  if (error) {
+    console.warn('[notifications] No se pudieron sincronizar recordatorios pendientes:', error.message);
+  }
 }
 
 async function refreshAll() {
@@ -717,9 +750,10 @@ async function refreshAll() {
       loadTaskSubmissions(),
       loadRewardRequests(),
       loadCoinLedger(),
-      loadAdjustmentCatalog(),
-      loadNotifications()
+      loadAdjustmentCatalog()
     ]);
+    await syncPendingNotificationReminders();
+    await loadNotifications();
     setCloudStatus(true);
     if (isGuardianOrPlatform()) renderAdminScreen();
     else renderMainScreen();
@@ -838,6 +872,7 @@ function renderMainScreen() {
   renderPlayerProfile();
   updatePendingBadge();
   renderStoreRewards();
+  updateNotificationBadges();
 }
 
 function renderTodayPlayer() {
@@ -1047,6 +1082,169 @@ function updatePendingBadge() {
   const holder = $('pendingBadgeMain');
   if (!holder) return;
   holder.innerHTML = count > 0 ? `<span class="badge">${count}</span>` : '';
+  updateNotificationBadges();
+}
+
+function unreadNotificationsCount() {
+  return notifications.filter(item => !item.is_read).length;
+}
+
+function notificationTypeMeta(type = '') {
+  return {
+    task_submitted: { label: 'Tarea enviada', icon: '⭐', action: 'Revisar tarea', route: 'tareas' },
+    task_approved: { label: 'Tarea aprobada', icon: '✅', action: 'Ver tareas', route: 'misiones' },
+    task_rejected: { label: 'Tarea rechazada', icon: '⚠️', action: 'Ver tareas', route: 'misiones' },
+    reward_requested: { label: 'Solicitud de recompensa', icon: '🎁', action: 'Revisar solicitud', route: 'solicitudes' },
+    reward_approved: { label: 'Recompensa aprobada', icon: '🪙', action: 'Ir a tienda', route: 'tienda' },
+    reward_rejected: { label: 'Recompensa rechazada', icon: '⛔', action: 'Ir a tienda', route: 'tienda' },
+    reward_delivered: { label: 'Recompensa entregada', icon: '🎉', action: 'Ver pedidos', route: 'tienda' },
+    daily_goal_completed: { label: 'Meta diaria', icon: '🎯', action: 'Abrir hoy', route: 'hoy' },
+    store_unlocked: { label: 'Tienda desbloqueada', icon: '🛒', action: 'Ir a tienda', route: 'tienda' },
+    makambu_adjustment: { label: 'Ajuste Makambu', icon: '⚙️', action: 'Ver historial', route: 'historial' },
+    bonus_received: { label: 'Bonus recibido', icon: '✨', action: 'Ver historial', route: 'historial' },
+    pending_too_long: { label: 'Pendiente hace rato', icon: '⏰', action: 'Revisar ahora', route: 'hoy' }
+  }[type] || { label: 'Aviso', icon: '🔔', action: 'Abrir', route: 'hoy' };
+}
+
+function notificationRelatedUserLabel(notification) {
+  const actorId = notification.actor_id || notification.metadata?.player_id || notification.metadata?.guardian_id;
+  if (!actorId) return 'Sistema Makambu';
+  if (actorId === currentUser?.id) return 'Sistema Makambu';
+  return getProfileName(actorId);
+}
+
+function notificationTargetRoute(notification) {
+  if (notification.action_route) return notification.action_route;
+  if (notification.type === 'pending_too_long' && notification.entity_type === 'reward_request') return 'solicitudes';
+  return notificationTypeMeta(notification.type).route;
+}
+
+function updateNotificationBadges() {
+  const unread = unreadNotificationsCount();
+  ['notificationBadgeMain', 'notificationBadgeAdmin'].forEach(id => {
+    const holder = $(id);
+    if (!holder) return;
+    holder.hidden = unread <= 0;
+    holder.textContent = unread > 99 ? '99+' : String(unread);
+  });
+  if ($('notificationsSummary')) {
+    const total = notifications.length;
+    $('notificationsSummary').textContent = total
+      ? `${unread} sin leer de ${total} recientes`
+      : 'Tus avisos recientes';
+  }
+}
+
+function renderNotificationsPanel() {
+  const holder = $('notificationsPanelBody');
+  if (!holder) return;
+
+  updateNotificationBadges();
+  if ($('notificationsMarkAllBtn')) {
+    $('notificationsMarkAllBtn').disabled = unreadNotificationsCount() === 0 || notificationsLoading;
+  }
+  if ($('notificationsRefreshBtn')) {
+    $('notificationsRefreshBtn').disabled = notificationsLoading;
+  }
+
+  if (notificationsLoading) {
+    holder.innerHTML = '<div class="notifications-state"><div class="spinner notifications-spinner"></div><p>Cargando notificaciones...</p></div>';
+    return;
+  }
+
+  if (notificationsError) {
+    holder.innerHTML = `<div class="notifications-state error"><p>${escapeHtml(notificationsError)}</p><button class="quick-action-btn" type="button" onclick="refreshNotificationsFromPanel()">Reintentar</button></div>`;
+    return;
+  }
+
+  if (!notifications.length) {
+    holder.innerHTML = empty('🔔', 'No tienes notificaciones recientes.');
+    return;
+  }
+
+  holder.innerHTML = notifications.map(notificationCardHtml).join('');
+}
+
+function notificationCardHtml(notification) {
+  const meta = notificationTypeMeta(notification.type);
+  const unreadClass = notification.is_read ? '' : ' unread';
+  const typeLabel = meta.label;
+  const relatedUser = notificationRelatedUserLabel(notification);
+  const actionLabel = notification.action_label || meta.action;
+  const readButton = notification.is_read
+    ? ''
+    : `<button class="btn-give" type="button" onclick="event.stopPropagation(); markNotificationRead('${notification.id}')">Marcar leido</button>`;
+
+  return `<div class="notification-card${unreadClass}">
+    <div class="notification-card-main" onclick="openNotificationTarget('${notification.id}')">
+      <div class="notification-icon">${meta.icon}</div>
+      <div class="notification-copy">
+        <div class="notification-copy-head">
+          <span class="notification-type">${escapeHtml(typeLabel)}</span>
+          <span class="hist-badge ${notification.is_read ? 'approved' : 'pending'}">${notification.is_read ? 'Leido' : 'Nuevo'}</span>
+        </div>
+        <div class="notification-title">${escapeHtml(notification.title || 'Aviso')}</div>
+        <div class="notification-message">${escapeHtml(notification.message || '')}</div>
+        <div class="notification-meta">${escapeHtml(relatedUser)} · ${fmtDateTime(notification.created_at)}</div>
+      </div>
+    </div>
+    <div class="notification-actions">
+      <button class="btn-give" type="button" onclick="event.stopPropagation(); openNotificationTarget('${notification.id}')">${escapeHtml(actionLabel)}</button>
+      ${readButton}
+    </div>
+  </div>`;
+}
+
+function openNotificationsPanel() {
+  renderNotificationsPanel();
+  $('notificationsModal')?.classList.add('open');
+}
+
+function closeNotificationsPanel() {
+  $('notificationsModal')?.classList.remove('open');
+}
+
+async function refreshNotificationsFromPanel() {
+  if (!requireLiveConnection('Makambu necesita internet para cargar notificaciones reales.')) return;
+  await syncPendingNotificationReminders();
+  await loadNotifications();
+}
+
+async function markNotificationRead(notificationId) {
+  if (!requireLiveConnection('Makambu necesita internet para actualizar tus notificaciones.')) return;
+  const { error } = await supabaseClient.rpc('mark_notification_read', {
+    target_notification_id: notificationId
+  });
+  if (error) return fail(error, 'No se pudo marcar la notificacion');
+  await loadNotifications();
+  if (isGuardianOrPlatform()) renderAdminScreen();
+  else renderMainScreen();
+  applyRouteForCurrentRole();
+}
+
+async function markAllNotificationsRead() {
+  if (!requireLiveConnection('Makambu necesita internet para actualizar tus notificaciones.')) return;
+  const { error } = await supabaseClient.rpc('mark_all_notifications_read', {
+    target_family_id: FAMILY_ID
+  });
+  if (error) return fail(error, 'No se pudieron marcar las notificaciones');
+  await loadNotifications();
+  if (isGuardianOrPlatform()) renderAdminScreen();
+  else renderMainScreen();
+  applyRouteForCurrentRole();
+}
+
+async function openNotificationTarget(notificationId) {
+  const notification = notifications.find(item => item.id === notificationId);
+  if (!notification) return;
+  if (!notification.is_read) {
+    await markNotificationRead(notificationId);
+  }
+
+  closeNotificationsPanel();
+  const route = notificationTargetRoute(notification);
+  if (isGuardianOrPlatform()) showAdminTab(route);
+  else showTab(route);
 }
 
 // ================================================================
@@ -1193,6 +1391,7 @@ function renderAdminScreen() {
   renderAdminProfileView();
   updateAdminBadges();
   initAdminCollapsible();
+  updateNotificationBadges();
 }
 
 function renderAdminTodayView() {
@@ -1318,7 +1517,7 @@ function renderAdminProfileView() {
     </div>
 
     <div class="card">
-      <div class="card-title">Avisos de meta diaria</div>
+      <div class="card-title">Notificaciones recientes</div>
       <div id="adminNotificationsList">${renderAdminNotificationsHtml()}</div>
     </div>
   `;
@@ -1327,7 +1526,6 @@ function renderAdminProfileView() {
   renderTaskListAdmin();
   renderRewardListAdmin();
   renderAdjustCatalogAdmin();
-  renderNotificationSettingsAdmin();
   renderAdminHistorialTab();
 }
 
@@ -1340,7 +1538,7 @@ function buildGuardianAlerts() {
 
   if (pendingTasks) alerts.push(`Hay ${pendingTasks} tareas esperando revision.`);
   if (pendingRewards) alerts.push(`Hay ${pendingRewards} solicitudes de tienda por revisar.`);
-  if (unread) alerts.push(`Tienes ${unread} avisos de meta diaria sin leer.`);
+  if (unread) alerts.push(`Tienes ${unread} notificaciones sin leer.`);
   if (lockedPlayers) alerts.push(`${lockedPlayers} jugadores aun no desbloquean la tienda hoy.`);
 
   return alerts;
@@ -1397,7 +1595,6 @@ async function approveTask(submissionId) {
   const sameDay = dateBogotaISO(submission.submitted_at) === todayBogotaISO();
   const status = sameDay ? 'approved' : 'late_approved';
   const coins = sameDay ? task.coins : 0;
-  const previousApprovedToday = approvedTodayCount(submission.player_id);
 
   const { error: updateError } = await supabaseClient
     .from('task_submissions')
@@ -1425,7 +1622,6 @@ async function approveTask(submissionId) {
       });
     if (ledgerError) return fail(ledgerError, 'Se aprobo la mision pero no se registraron los coins');
 
-    await maybeCreateDailyGoalNotification(submission.player_id, previousApprovedToday + 1);
     spawnParticles('🪙');
     showToast(`${task.name} aprobada: +${coins} coins`);
   } else {
@@ -1434,32 +1630,6 @@ async function approveTask(submissionId) {
 
   playSound('coin');
   await refreshAll();
-}
-
-async function maybeCreateDailyGoalNotification(playerId, approvedCount) {
-  const goal = dailyGoal(playerId);
-  if (approvedCount < goal || !shouldNotifyDailyGoal(playerId)) return;
-
-  const today = todayBogotaISO();
-  const playerName = getProfileName(playerId);
-  const recipients = guardianIdsForFamily();
-  if (!recipients.length) return;
-
-  const rows = recipients.map(recipientId => ({
-    family_id: FAMILY_ID,
-    recipient_id: recipientId,
-    actor_id: playerId,
-    type: 'daily_goal_completed',
-    title: '🎋 Meta diaria completada',
-    message: `${playerName} completo ${approvedCount}/${goal} misiones hoy.`,
-    metadata: { player_id: playerId, date: today, approved_tasks: approvedCount, daily_goal: goal },
-    is_read: false
-  }));
-
-  const { error } = await supabaseClient.from('notifications').insert(rows);
-  if (error && error.code !== '23505') {
-    console.warn('[notifications] No se pudo crear aviso de meta diaria:', error.message);
-  }
 }
 
 async function rejectTask(submissionId) {
@@ -1579,10 +1749,10 @@ async function rejectRequest(requestId) {
 }
 
 function renderAdminNotificationsHtml() {
-  const list = notifications.filter(item => item.type === 'daily_goal_completed').slice(0, 10);
+  const list = notifications.slice(0, 10);
   return list.length
     ? list.map(notificationHtml).join('')
-    : empty('🔔', 'Sin avisos de meta diaria.');
+    : empty('🔔', 'Sin notificaciones recientes.');
 }
 
 function notificationHtml(notification) {
@@ -1604,7 +1774,7 @@ function notificationHtml(notification) {
   </div>`;
 }
 
-async function markNotificationRead(notificationId) {
+async function markNotificationReadLegacy(notificationId) {
   if (!requireLiveConnection()) return;
   const { error } = await supabaseClient
     .from('notifications')
@@ -1696,6 +1866,7 @@ function updateAdminBadges() {
   const pendingRequests = rewardRequests.filter(item => item.status === 'pending' || item.status === 'approved').length;
   if ($('pendingBadgeAdmin')) $('pendingBadgeAdmin').innerHTML = pendingTasks ? `<span class="badge">${pendingTasks}</span>` : '';
   if ($('requestsBadgeAdmin')) $('requestsBadgeAdmin').innerHTML = pendingRequests ? `<span class="badge">${pendingRequests}</span>` : '';
+  updateNotificationBadges();
 }
 
 function renderAdminMissions() {

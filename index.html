@@ -96,6 +96,10 @@
           <span class="c-icon">🪙</span>
           <span class="c-val" id="coinDisplay">0</span>
         </div>
+        <button class="btn-icon btn-bell" onclick="openNotificationsPanel()" title="Notificaciones" aria-label="Notificaciones">
+          <span class="btn-icon-glyph">🔔</span>
+          <span id="notificationBadgeMain" class="nav-badge" hidden>0</span>
+        </button>
         <button class="btn-icon" onclick="manualUserRefresh()" title="Actualizar">↻</button>
       </div>
     </div>
@@ -192,6 +196,10 @@
           <span class="c-icon">🪙</span>
           <span class="c-val" id="adminCoinDisplay">0</span>
         </div>
+        <button class="btn-icon btn-bell" onclick="openNotificationsPanel()" title="Notificaciones" aria-label="Notificaciones">
+          <span class="btn-icon-glyph">🔔</span>
+          <span id="notificationBadgeAdmin" class="nav-badge" hidden>0</span>
+        </button>
         <span id="cloudStatus">Nube OK</span>
       </div>
     </div>
@@ -355,6 +363,24 @@
     <div class="loading-card">
       <div class="spinner"></div>
       <div class="loading-msg" id="loadingMsg">Cargando...</div>
+    </div>
+  </div>
+
+  <div id="notificationsModal" class="modal-overlay" onclick="if(event.target===this)closeNotificationsPanel()">
+    <div class="modal-sheet notifications-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div>
+          <div class="sheet-title">Notificaciones</div>
+          <div class="sheet-subtitle" id="notificationsSummary">Tus avisos recientes</div>
+        </div>
+        <button class="btn-close" onclick="closeNotificationsPanel()">✕</button>
+      </div>
+      <div class="notifications-toolbar">
+        <button id="notificationsRefreshBtn" class="btn-give" type="button" onclick="refreshNotificationsFromPanel()">Actualizar</button>
+        <button id="notificationsMarkAllBtn" class="btn-give" type="button" onclick="markAllNotificationsRead()">Marcar todas</button>
+      </div>
+      <div id="notificationsPanelBody" class="notifications-panel-body"></div>
     </div>
   </div>
 

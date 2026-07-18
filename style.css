@@ -263,6 +263,12 @@ input, select, textarea { font-family: var(--font); outline: none; border: none;
   font-size: 15px; transition: background 0.15s;
 }
 .btn-icon:hover { background: var(--accent-soft); }
+.btn-bell { position: relative; }
+.btn-icon-glyph { line-height: 1; }
+.btn-bell .nav-badge {
+  top: -2px;
+  right: -2px;
+}
 
 /* ================================================================
    BOTTOM NAV
@@ -462,6 +468,138 @@ input, select, textarea { font-family: var(--font); outline: none; border: none;
 .tab-pill.active { background: var(--accent); color: var(--white); box-shadow: 0 2px 8px rgba(92,110,248,0.3); }
 .tab-pane { display: none; overflow-y: auto; padding: 0 14px 20px; flex: 1; }
 .tab-pane.active { display: block; }
+.sheet-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.notifications-sheet {
+  min-height: 44vh;
+}
+
+.notifications-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 0 18px 12px;
+  flex-shrink: 0;
+}
+
+.notifications-toolbar .btn-give {
+  flex: 1;
+  text-align: center;
+}
+
+.notifications-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 14px 20px;
+}
+
+.notifications-state {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.notifications-state.error p {
+  color: var(--red);
+}
+
+.notifications-spinner {
+  margin-bottom: 0;
+}
+
+.notification-card {
+  background: var(--bg);
+  border: 1px solid var(--bg-subtle);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+
+.notification-card.unread {
+  border-color: rgba(92,110,248,0.3);
+  background: linear-gradient(180deg, #ffffff 0%, #f6f8ff 100%);
+}
+
+.notification-card-main {
+  display: flex;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.notification-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.notification-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.notification-copy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notification-type {
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.notification-title {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.notification-message,
+.notification-meta {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.notification-message {
+  color: var(--text-2);
+  margin-top: 4px;
+}
+
+.notification-meta {
+  color: var(--text-3);
+  margin-top: 6px;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
 
 /* Reward items */
 .reward-row {
