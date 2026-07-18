@@ -706,7 +706,6 @@ async function loadNotifications() {
   const { data, error } = await supabaseClient
     .from('notifications')
     .select('*')
-    .eq('family_id', FAMILY_ID)
     .eq('recipient_id', currentUser.id)
     .order('created_at', { ascending: false })
     .limit(NOTIFICATION_HISTORY_LIMIT);
