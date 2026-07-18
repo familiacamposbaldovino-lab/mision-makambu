@@ -8,13 +8,54 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#5C6EF8">
   <meta name="apple-mobile-web-app-title" content="Makambu">
+  <meta name="application-name" content="Makambu">
+  <meta name="description" content="Habitos para familias modernas.">
   <title>Mision Makambu</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.svg">
+  <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
+
+  <div id="connectivityBanner" class="status-banner status-banner-offline" hidden>
+    <div>
+      <strong>Sin conexion.</strong>
+      <span>Makambu necesita internet para actualizar misiones, monedas y solicitudes.</span>
+    </div>
+    <button id="retryConnectionBtn" class="status-banner-btn" type="button">Reintentar</button>
+  </div>
+
+  <div id="installBanner" class="status-banner status-banner-install" hidden>
+    <div>
+      <strong>Instalar Makambu</strong>
+      <span>Agrega la app a tu pantalla principal para abrirla como una app movil.</span>
+    </div>
+    <div class="status-banner-actions">
+      <button id="installAppBtn" class="status-banner-btn" type="button">Instalar</button>
+      <button id="dismissInstallBtn" class="status-banner-btn secondary" type="button">Luego</button>
+    </div>
+  </div>
+
+  <div id="installGuideBanner" class="status-banner status-banner-guide" hidden>
+    <div>
+      <strong>Instalacion manual</strong>
+      <span>Abre el menu del navegador y selecciona "Agregar a pantalla principal".</span>
+    </div>
+    <button id="dismissGuideBtn" class="status-banner-btn secondary" type="button">Entendido</button>
+  </div>
+
+  <div id="updateBanner" class="status-banner status-banner-update" hidden>
+    <div>
+      <strong>Nueva version disponible</strong>
+      <span>Hay una nueva version de Makambu lista para actualizarse.</span>
+    </div>
+    <div class="status-banner-actions">
+      <button id="applyUpdateBtn" class="status-banner-btn" type="button">Actualizar</button>
+      <button id="dismissUpdateBtn" class="status-banner-btn secondary" type="button">Despues</button>
+    </div>
+  </div>
 
   <div id="loginScreen" class="screen active">
     <div class="login-card">

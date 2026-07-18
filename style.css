@@ -64,6 +64,59 @@ input, select, textarea { font-family: var(--font); outline: none; border: none;
 /* ── App shell ──────────────────────────────────────────────────── */
 #app { max-width: 430px; margin: 0 auto; min-height: 100vh; position: relative; }
 
+.status-banner {
+  position: sticky;
+  top: 0;
+  z-index: 320;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+}
+
+.status-banner[hidden] { display: none; }
+
+.status-banner strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.status-banner span {
+  display: block;
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.94;
+}
+
+.status-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.status-banner-btn {
+  border-radius: 999px;
+  padding: 9px 12px;
+  background: rgba(255,255,255,0.18);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status-banner-btn.secondary {
+  background: rgba(255,255,255,0.1);
+}
+
+.status-banner-offline { background: linear-gradient(135deg, #d9485f 0%, #f97316 100%); }
+.status-banner-install { background: linear-gradient(135deg, #3d4fd6 0%, #5c6ef8 100%); }
+.status-banner-guide { background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%); }
+.status-banner-update { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+
 /* ── Screens ────────────────────────────────────────────────────── */
 .screen { display: none; min-height: 100vh; flex-direction: column; }
 .screen.active { display: flex; }

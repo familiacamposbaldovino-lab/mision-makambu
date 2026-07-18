@@ -6,12 +6,17 @@
 const SUPABASE_URL = 'https://nhqchhiwglulgraowvho.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ocWNoaGl3Z2x1bGdyYW93dmhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMzYzMjAsImV4cCI6MjA5MjgxMjMyMH0.m1-knqCFAOutGlKP4oCVtGb_GVheJurf_rfvUYDppgo';
 const FAMILY_ID = '11111111-1111-1111-1111-111111111111';
+const APP_VERSION = '2026.07.18-pwa.1';
+const INSTALL_DISMISSED_KEY = 'makambu_install_dismissed_v1';
+const INSTALL_GUIDE_DISMISSED_KEY = 'makambu_install_guide_dismissed_v1';
 
 const PLAYER_TABS = ['hoy', 'misiones', 'tienda', 'historial', 'perfil'];
 const ADMIN_TABS = ['hoy', 'familia', 'tareas', 'solicitudes', 'perfil'];
 const STORE_TABS = ['tiempo', 'premios', 'store-hist'];
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase?.createClient
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 // ================================================================
 // AUDIO ENGINE
@@ -86,8 +91,24 @@ let currentUserTab = 'hoy';
 let currentAdminTab = 'hoy';
 let currentStoreTab = 'tiempo';
 let autoRefreshInterval = null;
+let deferredInstallPrompt = null;
+let swRegistration = null;
+let isApplyingUpdate = false;
+let updateBannerDismissed = false;
 
 const $ = id => document.getElementById(id);
+
+function isBackendReady() {
+  return Boolean(supabaseClient);
+}
+
+function isOnline() {
+  return navigator.onLine !== false;
+}
+
+function isStandaloneMode() {
+  return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
 
 // ================================================================
 // DATE AND FORMAT
@@ -187,6 +208,59 @@ function applyRouteForCurrentRole() {
 window.addEventListener('hashchange', () => {
   applyRouteForCurrentRole();
 });
+
+function setBannerState(id, visible) {
+  const element = $(id);
+  if (!element) return;
+  element.hidden = !visible;
+}
+
+function setConnectivityBanner() {
+  setBannerState('connectivityBanner', !isOnline());
+}
+
+function setInstallBannerVisibility() {
+  const dismissed = localStorage.getItem(INSTALL_DISMISSED_KEY) === '1';
+  const shouldShow = !dismissed && !isStandaloneMode() && Boolean(deferredInstallPrompt);
+  setBannerState('installBanner', shouldShow);
+}
+
+function setInstallGuideVisibility(force = false) {
+  const dismissed = localStorage.getItem(INSTALL_GUIDE_DISMISSED_KEY) === '1';
+  const shouldShow = !dismissed && !isStandaloneMode() && !deferredInstallPrompt && force;
+  setBannerState('installGuideBanner', shouldShow);
+}
+
+function setUpdateBannerVisibility(visible) {
+  setBannerState('updateBanner', visible && !updateBannerDismissed);
+}
+
+function setConnectivityState(ok) {
+  setCloudStatus(ok);
+  setConnectivityBanner();
+}
+
+function requireLiveConnection(reason = 'Makambu necesita internet para actualizar misiones, monedas y solicitudes.') {
+  if (!isOnline() || !isBackendReady()) {
+    setConnectivityState(false);
+    showToast(reason);
+    return false;
+  }
+  return true;
+}
+
+function clearSessionVisuals() {
+  closeWarpZone();
+  ['todayPlayerView', 'missionsList', 'quickHistory', 'historialList', 'playerProfileView', 'adminTodayView', 'adminFamilyView', 'pendingApprovals', 'adminMissionsList', 'adminRequestsList', 'adminProfileView', 'adminHistorialList'].forEach(id => {
+    if ($(id)) $(id).innerHTML = '';
+  });
+}
+
+function markUpdateReady(registration) {
+  swRegistration = registration;
+  updateBannerDismissed = false;
+  setUpdateBannerVisibility(true);
+}
 
 // ================================================================
 // DATA HELPERS
@@ -396,6 +470,8 @@ function familySummaryMetrics() {
 // ================================================================
 async function handleSupabaseLogin(event) {
   event.preventDefault();
+  if (!requireLiveConnection()) return;
+
   const email = $('emailInput')?.value.trim();
   const password = $('passwordInput')?.value;
   const btn = $('loginButton');
@@ -435,16 +511,34 @@ async function handleSupabaseLogin(event) {
 
 async function doLogout() {
   stopAutoRefresh();
-  await supabaseClient.auth.signOut();
+  if (isBackendReady()) {
+    await supabaseClient.auth.signOut();
+  }
   session = null;
   currentUser = null;
   currentProfile = null;
   currentFamilyRole = null;
+  familyMembers = [];
+  tasks = [];
+  rewards = [];
+  taskSubmissions = [];
+  rewardRequests = [];
+  coinLedger = [];
+  playerSettings = [];
+  adjustmentCatalog = [];
+  notifications = [];
+  clearSessionVisuals();
   goToHomeRoute();
   showScreen('loginScreen');
 }
 
 async function bootstrapApp() {
+  if (!isBackendReady()) {
+    setConnectivityState(false);
+    showScreen('loginScreen');
+    return;
+  }
+
   const { data: sessionData } = await supabaseClient.auth.getSession();
   session = sessionData.session;
   if (!session?.user) {
@@ -613,6 +707,8 @@ async function loadNotifications() {
 }
 
 async function refreshAll() {
+  if (!requireLiveConnection()) return false;
+
   try {
     await Promise.all([
       loadTasks(),
@@ -647,6 +743,7 @@ function stopAutoRefresh() {
 }
 
 async function manualUserRefresh() {
+  if (!requireLiveConnection()) return;
   showToast('Actualizando...');
   const ok = await refreshAll();
   showToast(ok ? 'Actualizado' : 'No se pudo actualizar');
@@ -956,6 +1053,7 @@ function updatePendingBadge() {
 // TASK ACTIONS
 // ================================================================
 async function submitTask(taskId) {
+  if (!requireLiveConnection()) return;
   const task = tasks.find(item => item.id === taskId);
   if (!task) return;
 
@@ -975,6 +1073,7 @@ async function submitTask(taskId) {
 }
 
 async function undoTask(submissionId) {
+  if (!requireLiveConnection()) return;
   if (!submissionId) return;
   const local = taskSubmissions.find(item => item.id === submissionId);
   if (local && (local.player_id !== currentUser.id || local.status !== 'pending')) {
@@ -1050,6 +1149,7 @@ function renderStoreRewards() {
 }
 
 async function buyReward(rewardId) {
+  if (!requireLiveConnection()) return;
   const reward = rewards.find(item => item.id === rewardId);
   if (!reward) return;
 
@@ -1288,6 +1388,7 @@ function approvalCardHtml(submission) {
 }
 
 async function approveTask(submissionId) {
+  if (!requireLiveConnection()) return;
   const submission = taskSubmissions.find(item => item.id === submissionId);
   if (!submission) return;
   const task = tasks.find(item => item.id === submission.task_id);
@@ -1362,6 +1463,7 @@ async function maybeCreateDailyGoalNotification(playerId, approvedCount) {
 }
 
 async function rejectTask(submissionId) {
+  if (!requireLiveConnection()) return;
   const { error } = await supabaseClient
     .from('task_submissions')
     .update({
@@ -1411,6 +1513,7 @@ function adminRewardRequestHtml(request) {
 }
 
 async function approveRequest(requestId) {
+  if (!requireLiveConnection()) return;
   const request = rewardRequests.find(item => item.id === requestId);
   if (!request) return;
   const reward = rewards.find(item => item.id === request.reward_id);
@@ -1448,6 +1551,7 @@ async function approveRequest(requestId) {
 }
 
 async function deliverRequest(requestId) {
+  if (!requireLiveConnection()) return;
   const { error } = await supabaseClient
     .from('reward_requests')
     .update({ status: 'delivered', delivered_at: new Date().toISOString() })
@@ -1459,6 +1563,7 @@ async function deliverRequest(requestId) {
 }
 
 async function rejectRequest(requestId) {
+  if (!requireLiveConnection()) return;
   const { error } = await supabaseClient
     .from('reward_requests')
     .update({
@@ -1500,6 +1605,7 @@ function notificationHtml(notification) {
 }
 
 async function markNotificationRead(notificationId) {
+  if (!requireLiveConnection()) return;
   const { error } = await supabaseClient
     .from('notifications')
     .update({ is_read: true })
@@ -1542,6 +1648,7 @@ function renderNotificationSettingsAdmin() {
 }
 
 async function setDailyGoalNotification(playerId, enabled) {
+  if (!requireLiveConnection()) return;
   const existing = playerSettings.find(setting => setting.player_id === playerId);
   let error;
   if (existing) {
@@ -1646,6 +1753,7 @@ function renderAdjustCatalogAdmin() {
 }
 
 async function applyCatalogAdjustment(adjustmentId) {
+  if (!requireLiveConnection()) return;
   const adjustment = adjustmentCatalog.find(item => item.id === adjustmentId);
   if (!adjustment) return;
   const playerId = $('adjUserSel')?.value || getPlayerIdsForAdmin()[0];
@@ -1670,6 +1778,7 @@ async function applyCatalogAdjustment(adjustmentId) {
 }
 
 async function adjustCoins(direction) {
+  if (!requireLiveConnection()) return;
   const playerId = $('adjUserSel')?.value;
   const amount = parseInt($('adjAmount')?.value || '0', 10);
   if (!playerId || amount <= 0) return showToast('Selecciona jugador y cantidad.');
@@ -1699,6 +1808,7 @@ async function adjustCoins(direction) {
 }
 
 async function addTask() {
+  if (!requireLiveConnection()) return;
   const name = $('newTaskName')?.value.trim();
   const icon = $('newTaskIcon')?.value.trim() || '⭐';
   const coins = parseInt($('newTaskCoins')?.value || '5', 10);
@@ -1727,6 +1837,7 @@ async function addTask() {
 }
 
 async function addReward() {
+  if (!requireLiveConnection()) return;
   const name = $('newRewardName')?.value.trim();
   const icon = $('newRewardIcon')?.value.trim() || '🎁';
   const cost = parseInt($('newRewardCost')?.value || '10', 10);
@@ -1909,16 +2020,116 @@ function spawnParticles(emoji = '🪙', x, y) {
   }
 }
 
+function setupPwaControls() {
+  $('retryConnectionBtn')?.addEventListener('click', manualUserRefresh);
+  $('dismissInstallBtn')?.addEventListener('click', () => {
+    localStorage.setItem(INSTALL_DISMISSED_KEY, '1');
+    setInstallBannerVisibility();
+  });
+  $('dismissGuideBtn')?.addEventListener('click', () => {
+    localStorage.setItem(INSTALL_GUIDE_DISMISSED_KEY, '1');
+    setInstallGuideVisibility(false);
+  });
+  $('installAppBtn')?.addEventListener('click', async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const outcome = await deferredInstallPrompt.userChoice;
+      if (outcome?.outcome !== 'accepted') {
+        localStorage.setItem(INSTALL_DISMISSED_KEY, '1');
+      }
+      deferredInstallPrompt = null;
+      setInstallBannerVisibility();
+      return;
+    }
+    setInstallGuideVisibility(true);
+  });
+  $('dismissUpdateBtn')?.addEventListener('click', () => {
+    updateBannerDismissed = true;
+    setUpdateBannerVisibility(false);
+  });
+  $('applyUpdateBtn')?.addEventListener('click', () => {
+    if (!swRegistration?.waiting) {
+      setUpdateBannerVisibility(false);
+      return;
+    }
+    isApplyingUpdate = true;
+    swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+  });
+
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    localStorage.removeItem(INSTALL_DISMISSED_KEY);
+    setInstallBannerVisibility();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    setInstallBannerVisibility();
+    setInstallGuideVisibility(false);
+    showToast('Makambu quedo instalada.');
+  });
+
+  window.addEventListener('online', () => {
+    setConnectivityState(isBackendReady());
+    if (session?.user) refreshAll();
+  });
+
+  window.addEventListener('offline', () => {
+    setConnectivityState(false);
+  });
+}
+
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  try {
+    swRegistration = await navigator.serviceWorker.register(`./sw.js?v=${APP_VERSION}`);
+
+    if (swRegistration.waiting) {
+      markUpdateReady(swRegistration);
+    }
+
+    swRegistration.addEventListener('updatefound', () => {
+      const newWorker = swRegistration.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          markUpdateReady(swRegistration);
+        }
+      });
+    });
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (isApplyingUpdate) window.location.reload();
+    });
+  } catch (error) {
+    console.warn('[pwa] No se pudo registrar el service worker:', error.message);
+  }
+}
+
 // ================================================================
 // INIT
 // ================================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  setupPwaControls();
+  setConnectivityState(isOnline() && isBackendReady());
+  setInstallBannerVisibility();
+  setInstallGuideVisibility(!('onbeforeinstallprompt' in window));
+  registerServiceWorker();
+
   try {
+    if (!isBackendReady()) {
+      showScreen('loginScreen');
+      showToast('No tienes conexion. Makambu necesita internet para actualizar misiones, monedas y solicitudes.');
+      return;
+    }
+
     const { data } = await supabaseClient.auth.getSession();
     session = data.session;
     if (session?.user) await bootstrapApp();
     else showScreen('loginScreen');
-    setCloudStatus(true);
+    setConnectivityState(isOnline());
   } catch (error) {
     fail(error, 'No se pudo iniciar la aplicacion');
     showScreen('loginScreen');
