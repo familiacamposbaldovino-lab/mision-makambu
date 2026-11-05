@@ -1,5 +1,5 @@
-const APP_CACHE = 'makambu-shell-2026-07-18-v1';
-const RUNTIME_CACHE = 'makambu-runtime-2026-07-18-v1';
+const APP_CACHE = 'makambu-shell-2026-11-05-ledger-v1';
+const RUNTIME_CACHE = 'makambu-runtime-2026-11-05-ledger-v1';
 const SUPABASE_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 
 const STATIC_ASSETS = [
