@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://nhqchhiwglulgraowvho.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ocWNoaGl3Z2x1bGdyYW93dmhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMzYzMjAsImV4cCI6MjA5MjgxMjMyMH0.m1-knqCFAOutGlKP4oCVtGb_GVheJurf_rfvUYDppgo';
 const FAMILY_ID = '11111111-1111-1111-1111-111111111111';
-const APP_VERSION = '2026.07.18-pwa.1';
+const APP_VERSION = '2026.11.05-ledger.1';
 const INSTALL_DISMISSED_KEY = 'makambu_install_dismissed_v1';
 const INSTALL_GUIDE_DISMISSED_KEY = 'makambu_install_guide_dismissed_v1';
 const NOTIFICATION_HISTORY_LIMIT = 50;
@@ -670,13 +670,31 @@ async function loadRewardRequests() {
 }
 
 async function loadCoinLedger() {
-  const { data, error } = await supabaseClient
-    .from('coin_ledger')
-    .select('*')
-    .eq('family_id', FAMILY_ID)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  coinLedger = data || [];
+  // A single select can be capped by the API. Balances must include every
+  // movement, even when the history exceeds that cap. Page by the unique ID
+  // so inserts do not shift offsets or duplicate previously loaded entries.
+  const entries = [];
+  let lastId = null;
+  while (true) {
+    let query = supabaseClient
+      .from('coin_ledger')
+      .select('*')
+      .eq('family_id', FAMILY_ID)
+      .order('id', { ascending: true })
+      .range(0, 499);
+    if (lastId !== null) query = query.gt('id', lastId);
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data?.length) break;
+    entries.push(...data);
+    lastId = data[data.length - 1].id;
+    // Continue until empty: the server may enforce a cap below 500 rows.
+  }
+  // Publish only after every page succeeds; never display a partial balance.
+  coinLedger = entries.sort((a, b) =>
+    String(b.created_at).localeCompare(String(a.created_at)) ||
+    String(b.id).localeCompare(String(a.id))
+  );
 }
 
 async function loadAdjustmentCatalog() {
